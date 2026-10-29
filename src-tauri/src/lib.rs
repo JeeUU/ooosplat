@@ -35,9 +35,20 @@ pub fn run_app() {
         .plugin(tauri_plugin_opener::init())
         .manage(commands::PipelineController::default())
         .manage(commands::PreviewController::default())
+        .manage(mcp::exports::ExportController::default())
         .manage(telemetry::TelemetryService::new())
         .manage(updates::UpdateService::default())
         .manage(imports::ImportController::default())
+        .on_page_load(|webview, payload| {
+            use tauri::Manager;
+            if webview.label() == "main"
+                && matches!(payload.event(), tauri::webview::PageLoadEvent::Started)
+            {
+                if let Some(controller) = webview.try_state::<mcp::exports::ExportController>() {
+                    controller.page_loading(webview.app_handle().clone());
+                }
+            }
+        })
         .setup(|app| {
             use tauri::Manager;
             let tasks = app.state::<commands::PipelineController>().inner().clone();
@@ -82,6 +93,9 @@ pub fn run_app() {
             commands::start_gui_reshoot,
             mcp::get_mcp_settings,
             mcp::set_mcp_settings,
+            mcp::exports::mcp_export_executor_ready,
+            mcp::exports::mcp_export_executor_stopped,
+            mcp::exports::update_mcp_model_export,
             commands::inspect_reshoot_source,
             commands::probe_reshoot_input,
             commands::start_incremental_reshoot_pipeline,
